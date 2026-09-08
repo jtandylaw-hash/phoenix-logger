@@ -277,10 +277,18 @@ const store={
   async get(){try{if(window.storage){const r=await window.storage.get(KEY());if(r&&r.value)return JSON.parse(r.value);}}catch(e){}
     try{const j=localStorage.getItem(KEY());if(j)return JSON.parse(j);}catch(e){}return null;}
 };
-const save=()=>store.set(S);
-(async()=>{const s=await store.get();
-  if(s&&s.rows&&s.rows.length&&confirm("Resume saved game ("+s.rows.length+" rows"+(s.opp?", vs "+s.opp:"")+")? Cancel = fresh start.")){S=s;}
-  else{await store.set(S);}
+const save=()=>{try{localStorage.setItem("phx-last-team",S.teamId||"default");}catch(e){}return store.set(S);};
+(async()=>{
+  try{const last=localStorage.getItem("phx-last-team");if(last)S.teamId=last;}catch(e){}
+  const s=await store.get();
+  if(s){
+    // always restore team + playbooks
+    ["team","level","teamId","oplays","dcalls","stplays"].forEach(k=>{if(s[k]!==undefined)S[k]=s[k];});
+    if(s.rows&&s.rows.length&&confirm("Resume saved game ("+s.rows.length+" rows"+(s.opp?", vs "+s.opp:"")+")? Cancel = fresh game (playbooks are kept).")){
+      Object.assign(S,s);
+    }
+  }
+  await store.set(S);
   opp.value=S.opp||"";buildGrids();paintAll();})();
 
 // grids (from editable playbooks)
